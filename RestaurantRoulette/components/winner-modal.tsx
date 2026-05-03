@@ -1,7 +1,9 @@
-import { Modal, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Modal, Share, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { useEffect } from 'react';
 import { ThemedText } from '@/components/themed-text';
 import { Restaurant } from '@/types/restaurant';
 import { openInMaps } from '@/utils/maps';
+import { saveSpinResult } from '@/utils/storage';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
@@ -12,42 +14,45 @@ interface WinnerModalProps {
   onClose: () => void;
 }
 
-export function WinnerModal({
-  restaurant,
-  visible,
-  onSpinAgain,
-  onClose,
-}: WinnerModalProps) {
+export function WinnerModal({ restaurant, visible, onSpinAgain, onClose }: WinnerModalProps) {
   const colorScheme = useColorScheme() ?? 'light';
   const colors = Colors[colorScheme];
 
+  // Save to history whenever a new winner is shown
+  useEffect(() => {
+    if (restaurant && visible) {
+      saveSpinResult(restaurant);
+    }
+  }, [restaurant, visible]);
+
   if (!restaurant) return null;
 
+  const handleShare = async () => {
+    try {
+      await Share.share({
+        message: `I'm going to ${restaurant.name}! 🍽️\n${restaurant.cuisine} · ${restaurant.address}`,
+      });
+    } catch (err) {
+      console.warn('Share failed:', err);
+    }
+  };
+
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="fade"
-      onRequestClose={onClose}
-    >
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={styles.overlay}>
         <View style={[styles.card, { backgroundColor: colors.background }]}>
-          {/* Header */}
           <ThemedText style={styles.headerLabel}>You're going to...</ThemedText>
           <ThemedText style={styles.restaurantName}>{restaurant.name}</ThemedText>
 
-          {/* Details */}
           <View style={[styles.detailRow, { borderColor: colors.border }]}>
             <ThemedText style={styles.detailLabel}>Cuisine</ThemedText>
             <ThemedText style={styles.detailValue}>{restaurant.cuisine}</ThemedText>
           </View>
-
           <View style={[styles.detailRow, { borderColor: colors.border }]}>
             <ThemedText style={styles.detailLabel}>Address</ThemedText>
             <ThemedText style={styles.detailValue}>{restaurant.address}</ThemedText>
           </View>
 
-          {/* Actions */}
           <TouchableOpacity
             style={[styles.primaryButton, { backgroundColor: colors.primary }]}
             onPress={() => openInMaps(restaurant.lat, restaurant.lon, restaurant.name)}
@@ -58,15 +63,27 @@ export function WinnerModal({
             </ThemedText>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.secondaryButton, { borderColor: colors.primary }]}
-            onPress={onSpinAgain}
-            activeOpacity={0.7}
-          >
-            <ThemedText style={[styles.secondaryButtonText, { color: colors.primary }]}>
-              Spin Again
-            </ThemedText>
-          </TouchableOpacity>
+          <View style={styles.secondaryRow}>
+            <TouchableOpacity
+              style={[styles.halfButton, { borderColor: colors.primary }]}
+              onPress={onSpinAgain}
+              activeOpacity={0.7}
+            >
+              <ThemedText style={[styles.halfButtonText, { color: colors.primary }]}>
+                Spin Again
+              </ThemedText>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.halfButton, { borderColor: colors.primary }]}
+              onPress={handleShare}
+              activeOpacity={0.7}
+            >
+              <ThemedText style={[styles.halfButtonText, { color: colors.primary }]}>
+                Share
+              </ThemedText>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
     </Modal>
@@ -138,16 +155,21 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '700',
   },
-  secondaryButton: {
+  secondaryRow: {
+    flexDirection: 'row',
+    gap: 10,
     width: '100%',
+    marginTop: 12,
+  },
+  halfButton: {
+    flex: 1,
     paddingVertical: 12,
     borderRadius: 10,
     alignItems: 'center',
-    marginTop: 12,
     borderWidth: 2,
   },
-  secondaryButtonText: {
-    fontSize: 16,
+  halfButtonText: {
+    fontSize: 15,
     fontWeight: '600',
   },
 });

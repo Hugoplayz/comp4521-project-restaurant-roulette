@@ -4,10 +4,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useLocation } from '@/hooks/use-location';
 import { useRestaurants } from '@/hooks/use-restaurants';
+import { useFilters, RADIUS_DEFAULT } from '@/hooks/use-filters';
 import { LoadingScreen } from '@/components/loading-screen';
 import { ErrorScreen } from '@/components/error-screen';
 import { RouletteWheel } from '@/components/roulette-wheel';
 import { WinnerModal } from '@/components/winner-modal';
+import { FilterSheet } from '@/components/filter-sheet';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Colors } from '@/constants/theme';
@@ -18,20 +20,22 @@ export default function RouletteScreen() {
   const colorScheme = useColorScheme() ?? 'light';
   const colors = Colors[colorScheme];
 
-  const {
-    latitude,
-    longitude,
-    loading: locationLoading,
-    error: locationError,
-    permissionDenied,
-  } = useLocation();
+  const { latitude, longitude, loading: locationLoading, error: locationError, permissionDenied } = useLocation();
+
+  const [radius, setRadius] = useState(RADIUS_DEFAULT);
+  const [filterSheetVisible, setFilterSheetVisible] = useState(false);
+
+  const { restaurants, loading: restaurantsLoading, error: restaurantsError, refetch } =
+    useRestaurants(latitude, longitude, radius);
 
   const {
-    restaurants,
-    loading: restaurantsLoading,
-    error: restaurantsError,
-    refetch,
-  } = useRestaurants(latitude, longitude);
+    selectedCuisines,
+    toggleCuisine,
+    clearCuisines,
+    availableCuisines,
+    filteredRestaurants,
+    activeCuisineCount,
+  } = useFilters(restaurants);
 
   const [spinning, setSpinning] = useState(false);
   const [winner, setWinner] = useState<Restaurant | null>(null);
@@ -53,76 +57,51 @@ export default function RouletteScreen() {
   const handleSpinAgain = useCallback(() => {
     setModalVisible(false);
     setWinner(null);
-    // Small delay so the modal dismisses before spinning starts again
-    setTimeout(() => {
-      setSpinning(true);
-    }, 300);
+    setTimeout(() => { setSpinning(true); }, 300);
   }, []);
 
-  const handleCloseModal = useCallback(() => {
-    setModalVisible(false);
-  }, []);
+  const handleCloseModal = useCallback(() => { setModalVisible(false); }, []);
 
-  // Loading / error states
-  if (locationLoading) {
-    return <LoadingScreen message="Finding your location..." />;
-  }
+  if (locationLoading) return <LoadingScreen message="Finding your location..." />;
+  if (permissionDenied || locationError) return <ErrorScreen message={locationError || 'Location permission is required to find nearby restaurants.'} />;
+  if (restaurantsLoading) return <LoadingScreen message="Searching for nearby restaurants..." />;
+  if (restaurantsError) return <ErrorScreen message={`Could not load restaurants.\n${restaurantsError}`} onRetry={refetch} />;
+  if (restaurants.length === 0) return <ErrorScreen message="No restaurants found nearby. Try a wider radius." onRetry={refetch} />;
 
-  if (permissionDenied || locationError) {
-    return (
-      <ErrorScreen
-        message={
-          locationError ||
-          'Location permission is required to find nearby restaurants.'
-        }
-      />
-    );
-  }
-
-  if (restaurantsLoading) {
-    return <LoadingScreen message="Searching for nearby restaurants..." />;
-  }
-
-  if (restaurantsError) {
-    return (
-      <ErrorScreen
-        message={`Could not load restaurants.\n${restaurantsError}`}
-        onRetry={refetch}
-      />
-    );
-  }
-
-  if (restaurants.length === 0) {
-    return (
-      <ErrorScreen
-        message="No restaurants found nearby. Try a different area."
-        onRetry={refetch}
-      />
-    );
-  }
-
-  if (restaurants.length < 2) {
-    return (
-      <ErrorScreen
-        message="Need at least 2 restaurants to spin the wheel. Try a wider search area."
-        onRetry={refetch}
-      />
-    );
-  }
+  const spinList = filteredRestaurants.length >= 2 ? filteredRestaurants : restaurants;
+  const activeFilterCount = activeCuisineCount + (radius !== RADIUS_DEFAULT ? 1 : 0);
 
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        {/* Title */}
-        <ThemedText style={styles.title}>Restaurant Roulette</ThemedText>
-        <ThemedText style={styles.subtitle}>
-          {restaurants.length} restaurants nearby
-        </ThemedText>
+        {/* Header */}
+        <View style={styles.headerRow}>
+          <View style={styles.headerLeft}>
+            <ThemedText style={styles.title}>Restaurant Roulette</ThemedText>
+            <ThemedText style={styles.subtitle}>
+              {filteredRestaurants.length < restaurants.length
+                ? `${filteredRestaurants.length} of ${restaurants.length} restaurants`
+                : `${restaurants.length} restaurants nearby`}
+            </ThemedText>
+          </View>
+          <TouchableOpacity
+            style={[styles.filterButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
+            onPress={() => setFilterSheetVisible(true)}
+            activeOpacity={0.7}
+          >
+            <ThemedText style={[styles.filterIcon, { color: colors.primary }]}>⚙</ThemedText>
+            {activeFilterCount > 0 && (
+              <View style={[styles.badge, { backgroundColor: colors.primary }]}>
+                <ThemedText style={styles.badgeText}>{activeFilterCount}</ThemedText>
+              </View>
+            )}
+          </TouchableOpacity>
+        </View>
 
         {/* Wheel */}
         <View style={styles.wheelContainer}>
           <RouletteWheel
-            restaurants={restaurants}
+            restaurants={spinList}
             spinning={spinning}
             onFinished={handleFinished}
           />
@@ -130,10 +109,7 @@ export default function RouletteScreen() {
 
         {/* Spin button */}
         <TouchableOpacity
-          style={[
-            styles.spinButton,
-            { backgroundColor: spinning ? colors.icon : colors.primary },
-          ]}
+          style={[styles.spinButton, { backgroundColor: spinning ? colors.icon : colors.primary }]}
           onPress={handleSpin}
           disabled={spinning}
           activeOpacity={0.7}
@@ -143,12 +119,22 @@ export default function RouletteScreen() {
           </ThemedText>
         </TouchableOpacity>
 
-        {/* Winner modal */}
         <WinnerModal
           restaurant={winner}
           visible={modalVisible}
           onSpinAgain={handleSpinAgain}
           onClose={handleCloseModal}
+        />
+
+        <FilterSheet
+          visible={filterSheetVisible}
+          onClose={() => setFilterSheetVisible(false)}
+          radius={radius}
+          onRadiusChange={setRadius}
+          availableCuisines={availableCuisines}
+          selectedCuisines={selectedCuisines}
+          onToggleCuisine={toggleCuisine}
+          onClearCuisines={clearCuisines}
         />
       </SafeAreaView>
     </ThemedView>
@@ -156,40 +142,46 @@ export default function RouletteScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
+  container: { flex: 1 },
+  safeArea: { flex: 1, paddingTop: 16, paddingHorizontal: 16 },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 8,
   },
-  safeArea: {
-    flex: 1,
+  headerLeft: { flex: 1 },
+  title: { fontSize: 26, fontWeight: 'bold', marginBottom: 2 },
+  subtitle: { fontSize: 13, opacity: 0.6 },
+  filterButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 1,
+    justifyContent: 'center',
     alignItems: 'center',
-    paddingTop: 16,
-    paddingHorizontal: 16,
+    marginLeft: 12,
   },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    marginBottom: 4,
-  },
-  subtitle: {
-    fontSize: 14,
-    opacity: 0.6,
-    marginBottom: 16,
-  },
-  wheelContainer: {
-    flex: 1,
+  filterIcon: { fontSize: 20 },
+  badge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
     justifyContent: 'center',
     alignItems: 'center',
   },
+  badgeText: { fontSize: 10, fontWeight: '700', color: '#fff' },
+  wheelContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   spinButton: {
     width: '80%',
+    alignSelf: 'center',
     paddingVertical: 16,
     borderRadius: 12,
     alignItems: 'center',
     marginBottom: 24,
   },
-  spinButtonText: {
-    fontSize: 20,
-    fontWeight: '800',
-    letterSpacing: 1,
-  },
+  spinButtonText: { fontSize: 20, fontWeight: '800', letterSpacing: 1 },
 });
