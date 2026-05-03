@@ -9,6 +9,60 @@ interface LocationState {
   permissionDenied: boolean;
 }
 
+async function waitForLocationUpdate(timeoutMs = 15000): Promise<Location.LocationObject> {
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    let subscription: Location.LocationSubscription | null = null;
+    let shouldRemoveWhenReady = false;
+
+    const removeSubscription = () => {
+      if (subscription) {
+        subscription.remove();
+        return;
+      }
+      shouldRemoveWhenReady = true;
+    };
+
+    const timer = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      removeSubscription();
+      reject(new Error('Location update timed out. Please keep location enabled and try again.'));
+    }, timeoutMs);
+
+    Location.watchPositionAsync(
+      {
+        accuracy: Location.Accuracy.Lowest,
+        timeInterval: 1000,
+        distanceInterval: 0,
+      },
+      (location) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        removeSubscription();
+        resolve(location);
+      }
+    )
+      .then((sub) => {
+        subscription = sub;
+        if (shouldRemoveWhenReady) {
+          subscription.remove();
+        }
+      })
+      .catch((error: unknown) => {
+        if (shouldRemoveWhenReady && subscription) {
+          subscription.remove();
+        }
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        removeSubscription();
+        reject(error);
+      });
+  });
+}
+
 /**
  * Custom hook that requests GPS permission and returns the user's current location.
  */
@@ -41,22 +95,50 @@ export function useLocation(): LocationState {
           return;
         }
 
-        // Try last known position first (fast, works well on emulators)
-        let location = await Location.getLastKnownPositionAsync({
-          maxAge: 60000,
-          requiredAccuracy: 1000,
-        });
+        const servicesEnabled = await Location.hasServicesEnabledAsync();
+        if (!servicesEnabled) {
+          setState({
+            latitude: null,
+            longitude: null,
+            loading: false,
+            error: 'Current location is unavailable. Make sure that location services are enabled.',
+            permissionDenied: false,
+          });
+          return;
+        }
 
-        // Fall back to getCurrentPositionAsync with a timeout
+        // Try last known position first (fast, works well on emulators)
+        let lastKnown: Location.LocationObject | null = null;
+        try {
+          lastKnown = await Location.getLastKnownPositionAsync({
+            maxAge: 5 * 60 * 1000,
+            requiredAccuracy: 3000,
+          });
+        } catch {
+          lastKnown = null;
+        }
+        let location = lastKnown;
+
+        // Fall back to active GPS request
+        try {
+          location = await Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.Balanced,
+            mayShowUserSettingsDialog: true,
+          });
+        } catch (initialError: unknown) {
+          // Some emulators return "Current location is unavailable" for one-shot requests.
+          // In that case, wait briefly for a streamed update (works with mock GPS routes).
+          if (!location) {
+            try {
+              location = await waitForLocationUpdate();
+            } catch {
+              throw initialError;
+            }
+          }
+        }
+
         if (!location) {
-          location = await Promise.race([
-            Location.getCurrentPositionAsync({
-              accuracy: Location.Accuracy.Balanced,
-            }),
-            new Promise<never>((_, reject) =>
-              setTimeout(() => reject(new Error('Location request timed out. Make sure location services are enabled and a mock location is set.')), 10000)
-            ),
-          ]);
+          throw new Error('Current location is unavailable. Make sure that location services are enabled.');
         }
 
         if (cancelled) return;
