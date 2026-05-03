@@ -41,9 +41,23 @@ export function useLocation(): LocationState {
           return;
         }
 
-        const location = await Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.Balanced,
+        // Try last known position first (fast, works well on emulators)
+        let location = await Location.getLastKnownPositionAsync({
+          maxAge: 60000,
+          requiredAccuracy: 1000,
         });
+
+        // Fall back to getCurrentPositionAsync with a timeout
+        if (!location) {
+          location = await Promise.race([
+            Location.getCurrentPositionAsync({
+              accuracy: Location.Accuracy.Balanced,
+            }),
+            new Promise<never>((_, reject) =>
+              setTimeout(() => reject(new Error('Location request timed out. Make sure location services are enabled and a mock location is set.')), 10000)
+            ),
+          ]);
+        }
 
         if (cancelled) return;
 

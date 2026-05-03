@@ -65,7 +65,19 @@ export async function fetchRestaurants(
     OVERPASS_API_URL,
     `data=${encodeURIComponent(query)}`,
     {
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      /** 
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Accept': 'application/json',
+      },
+      */
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'text/plain',
+        'User-Agent': 'PAWS (mydomain.de)',  
+        'Referer': 'http://www.mydomain.de/' 
+
+      },
       timeout: 20000,
     }
   );
