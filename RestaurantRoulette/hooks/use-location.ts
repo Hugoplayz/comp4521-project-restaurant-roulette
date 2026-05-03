@@ -13,20 +13,20 @@ async function waitForLocationUpdate(timeoutMs = 15000): Promise<Location.Locati
   return new Promise((resolve, reject) => {
     let settled = false;
     let subscription: Location.LocationSubscription | null = null;
-    let removeWhenReady = false;
+    let shouldRemoveWhenReady = false;
 
-    const clear = () => {
+    const removeSubscription = () => {
       if (subscription) {
         subscription.remove();
         return;
       }
-      removeWhenReady = true;
+      shouldRemoveWhenReady = true;
     };
 
     const timer = setTimeout(() => {
       if (settled) return;
       settled = true;
-      clear();
+      removeSubscription();
       reject(new Error('Location update timed out. Please keep location enabled and try again.'));
     }, timeoutMs);
 
@@ -40,24 +40,24 @@ async function waitForLocationUpdate(timeoutMs = 15000): Promise<Location.Locati
         if (settled) return;
         settled = true;
         clearTimeout(timer);
-        clear();
+        removeSubscription();
         resolve(location);
       }
     )
       .then((sub) => {
         subscription = sub;
-        if (removeWhenReady) {
+        if (shouldRemoveWhenReady) {
           subscription.remove();
         }
       })
       .catch((error: unknown) => {
-        if (removeWhenReady && subscription) {
+        if (shouldRemoveWhenReady && subscription) {
           subscription.remove();
         }
         if (settled) return;
         settled = true;
         clearTimeout(timer);
-        clear();
+        removeSubscription();
         reject(error);
       });
   });
@@ -125,11 +125,15 @@ export function useLocation(): LocationState {
             accuracy: Location.Accuracy.Balanced,
             mayShowUserSettingsDialog: true,
           });
-        } catch {
+        } catch (initialError: unknown) {
           // Some emulators return "Current location is unavailable" for one-shot requests.
           // In that case, wait briefly for a streamed update (works with mock GPS routes).
           if (!location) {
-            location = await waitForLocationUpdate();
+            try {
+              location = await waitForLocationUpdate();
+            } catch {
+              throw initialError;
+            }
           }
         }
 
