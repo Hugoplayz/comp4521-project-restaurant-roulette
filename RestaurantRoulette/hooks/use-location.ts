@@ -13,11 +13,14 @@ async function waitForLocationUpdate(timeoutMs = 15000): Promise<Location.Locati
   return new Promise((resolve, reject) => {
     let settled = false;
     let subscription: Location.LocationSubscription | null = null;
+    let removeWhenReady = false;
 
     const clear = () => {
       if (subscription) {
         subscription.remove();
+        return;
       }
+      removeWhenReady = true;
     };
 
     const timer = setTimeout(() => {
@@ -43,6 +46,9 @@ async function waitForLocationUpdate(timeoutMs = 15000): Promise<Location.Locati
     )
       .then((sub) => {
         subscription = sub;
+        if (removeWhenReady) {
+          subscription.remove();
+        }
       })
       .catch((error: unknown) => {
         if (settled) return;
@@ -99,7 +105,12 @@ export function useLocation(): LocationState {
         }
 
         // Try last known position first (fast, works well on emulators)
-        const lastKnown = await Location.getLastKnownPositionAsync();
+        let lastKnown: Location.LocationObject | null = null;
+        try {
+          lastKnown = await Location.getLastKnownPositionAsync();
+        } catch {
+          lastKnown = null;
+        }
         let location = lastKnown;
 
         // Fall back to active GPS request
