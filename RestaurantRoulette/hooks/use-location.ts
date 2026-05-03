@@ -51,6 +51,9 @@ async function waitForLocationUpdate(timeoutMs = 15000): Promise<Location.Locati
         }
       })
       .catch((error: unknown) => {
+        if (removeWhenReady && subscription) {
+          subscription.remove();
+        }
         if (settled) return;
         settled = true;
         clearTimeout(timer);
@@ -107,7 +110,10 @@ export function useLocation(): LocationState {
         // Try last known position first (fast, works well on emulators)
         let lastKnown: Location.LocationObject | null = null;
         try {
-          lastKnown = await Location.getLastKnownPositionAsync();
+          lastKnown = await Location.getLastKnownPositionAsync({
+            maxAge: 5 * 60 * 1000,
+            requiredAccuracy: 3000,
+          });
         } catch {
           lastKnown = null;
         }
@@ -116,7 +122,7 @@ export function useLocation(): LocationState {
         // Fall back to active GPS request
         try {
           location = await Location.getCurrentPositionAsync({
-            accuracy: Location.Accuracy.High,
+            accuracy: Location.Accuracy.Balanced,
             mayShowUserSettingsDialog: true,
           });
         } catch {
