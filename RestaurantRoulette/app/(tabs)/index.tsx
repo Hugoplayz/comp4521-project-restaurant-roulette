@@ -6,7 +6,8 @@ import { useFilterContext } from '@/contexts/filter-context';
 import { LoadingScreen } from '@/components/loading-screen';
 import { ErrorScreen } from '@/components/error-screen';
 import { FilterSheet } from '@/components/filter-sheet';
-import { ThemedText } from '@/components/themed-text';import { Colors } from '@/constants/theme';
+import { ThemedText } from '@/components/themed-text';
+import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Restaurant } from '@/types/restaurant';
 

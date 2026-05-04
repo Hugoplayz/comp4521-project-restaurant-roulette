@@ -31,7 +31,7 @@ export default function RouletteScreen() {
   const [modalVisible, setModalVisible] = useState(false);
 
   const filteredRestaurants = useMemo(() => applyToRestaurants(restaurants), [restaurants, applyToRestaurants]);
-  const spinList = filteredRestaurants.length >= 2 ? filteredRestaurants : restaurants;
+  const spinList = filteredRestaurants;
 
   const handleSpin = useCallback(() => {
     if (spinning) return;
