@@ -1,4 +1,4 @@
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { Restaurant } from '@/types/restaurant';
 
 const HISTORY_FILE = FileSystem.documentDirectory + 'spin_history.json';
