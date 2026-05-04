@@ -46,7 +46,7 @@ function formatElement(el: OverpassElement): Restaurant | null {
     name: tags.name,
     lat,
     lon,
-    cuisine: tags.cuisine || tags.amenity || 'restaurant',
+    cuisine: tags.cuisine ? tags.cuisine.split(';')[0].trim().toLowerCase() : '',
     address: addressParts.length > 0 ? addressParts.join(', ') : 'Address not available',
   };
 }

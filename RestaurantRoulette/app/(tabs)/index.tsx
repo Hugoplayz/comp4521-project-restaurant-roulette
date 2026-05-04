@@ -59,12 +59,13 @@ export default function MapScreen() {
             key={restaurant.id}
             coordinate={{ latitude: restaurant.lat, longitude: restaurant.lon }}
             pinColor="red"
-            title={restaurant.name}
           >
-            <Callout tooltip={false}>
+            <Callout tooltip={true}>
               <View style={styles.callout}>
                 <Text style={styles.calloutTitle}>{restaurant.name}</Text>
-                <Text style={styles.calloutCuisine}>{restaurant.cuisine}</Text>
+                {!!restaurant.cuisine && (
+                  <Text style={styles.calloutCuisine}>{restaurant.cuisine}</Text>
+                )}
                 <Text style={styles.calloutAddress}>{restaurant.address}</Text>
               </View>
             </Callout>
@@ -100,8 +101,19 @@ export default function MapScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   map: { flex: 1 },
-  callout: { minWidth: 150, maxWidth: 250, padding: 8 },
-  calloutTitle: { fontSize: 15, fontWeight: '700', marginBottom: 2, color: '#000' },
+  callout: {
+    minWidth: 160,
+    maxWidth: 260,
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    padding: 12,
+    elevation: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+  },
+  calloutTitle: { fontSize: 15, fontWeight: '700', marginBottom: 3, color: '#111' },
   calloutCuisine: { fontSize: 13, marginBottom: 2, textTransform: 'capitalize', color: '#555' },
   calloutAddress: { fontSize: 12, color: '#777' },
   filterFab: {
