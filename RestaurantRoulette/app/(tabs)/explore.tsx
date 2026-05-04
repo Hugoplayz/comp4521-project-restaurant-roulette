@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -33,6 +33,14 @@ export default function RouletteScreen() {
   const filteredRestaurants = useMemo(() => applyToRestaurants(restaurants), [restaurants, applyToRestaurants]);
   const spinList = filteredRestaurants;
 
+  // If exactly 1 restaurant matches the filter, pop it directly without spinning
+  useEffect(() => {
+    if (spinList.length === 1) {
+      setWinner(spinList[0]);
+      setModalVisible(true);
+    }
+  }, [spinList]);
+
   const handleSpin = useCallback(() => {
     if (spinning) return;
     setWinner(null);
@@ -59,7 +67,7 @@ export default function RouletteScreen() {
   if (restaurantsLoading) return <LoadingScreen message="Searching for nearby restaurants..." />;
   if (restaurantsError) return <ErrorScreen message={`Could not load restaurants.\n${restaurantsError}`} onRetry={refetch} />;
   if (restaurants.length === 0) return <ErrorScreen message="No restaurants found nearby. Try a wider radius." onRetry={refetch} />;
-  if (spinList.length < 2) return <ErrorScreen message="Need at least 2 restaurants to spin. Try adjusting your filters." onRetry={refetch} />;
+  if (spinList.length === 0) return <ErrorScreen message="No restaurants match your filters. Try adjusting them." onRetry={refetch} />;
 
   const showingFiltered = filteredRestaurants.length > 0 && filteredRestaurants.length < restaurants.length;
 
@@ -90,22 +98,25 @@ export default function RouletteScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Wheel */}
-        <View style={styles.wheelContainer}>
-          <RouletteWheel restaurants={spinList} spinning={spinning} onFinished={handleFinished} />
-        </View>
+        {/* Wheel — only shown when 2+ restaurants */}
+        {spinList.length >= 2 && (
+          <>
+            <View style={styles.wheelContainer}>
+              <RouletteWheel restaurants={spinList} spinning={spinning} onFinished={handleFinished} />
+            </View>
 
-        {/* Spin button */}
-        <TouchableOpacity
-          style={[styles.spinButton, { backgroundColor: spinning ? colors.icon : colors.primary }]}
-          onPress={handleSpin}
-          disabled={spinning}
-          activeOpacity={0.7}
-        >
-          <ThemedText style={styles.spinButtonText} lightColor="#fff" darkColor="#fff">
-            {spinning ? 'Spinning...' : 'Spin!'}
-          </ThemedText>
-        </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.spinButton, { backgroundColor: spinning ? colors.icon : colors.primary }]}
+              onPress={handleSpin}
+              disabled={spinning}
+              activeOpacity={0.7}
+            >
+              <ThemedText style={styles.spinButtonText} lightColor="#fff" darkColor="#fff">
+                {spinning ? 'Spinning...' : 'Spin!'}
+              </ThemedText>
+            </TouchableOpacity>
+          </>
+        )}
 
         <WinnerModal
           restaurant={winner}
