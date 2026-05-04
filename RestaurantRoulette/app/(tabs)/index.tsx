@@ -1,16 +1,12 @@
 import { useMemo, useState } from 'react';
-import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import MapView, { Callout, Circle, Marker } from 'react-native-maps';
 
-import { useLocation } from '@/hooks/use-location';
-import { useRestaurants } from '@/hooks/use-restaurants';
-import { useFilters } from '@/hooks/use-filters';
 import { useFilterContext } from '@/contexts/filter-context';
 import { LoadingScreen } from '@/components/loading-screen';
 import { ErrorScreen } from '@/components/error-screen';
 import { FilterSheet } from '@/components/filter-sheet';
-import { ThemedText } from '@/components/themed-text';
-import { Colors } from '@/constants/theme';
+import { ThemedText } from '@/components/themed-text';import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Restaurant } from '@/types/restaurant';
 
@@ -20,15 +16,16 @@ export default function MapScreen() {
   const colorScheme = useColorScheme() ?? 'light';
   const colors = Colors[colorScheme];
 
-  const { latitude, longitude, loading: locationLoading, error: locationError, permissionDenied } = useLocation();
-  const { radius, selectedCuisines, applyFilters, applyToRestaurants, activeFilterCount } = useFilterContext();
+  const {
+    latitude, longitude,
+    locationLoading, locationError, permissionDenied,
+    restaurants, restaurantsLoading, restaurantsError, refetch,
+    availableCuisines,
+    radius, selectedCuisines, applyFilters, applyToRestaurants, activeFilterCount,
+  } = useFilterContext();
 
   const [filterSheetVisible, setFilterSheetVisible] = useState(false);
 
-  const { restaurants, loading: restaurantsLoading, error: restaurantsError, refetch } =
-    useRestaurants(latitude, longitude, radius);
-
-  const { availableCuisines } = useFilters(restaurants);
   const displayList = useMemo(() => applyToRestaurants(restaurants), [restaurants, applyToRestaurants]);
 
   if (locationLoading) return <LoadingScreen message="Finding your location..." />;
@@ -66,15 +63,9 @@ export default function MapScreen() {
           >
             <Callout tooltip={false}>
               <View style={styles.callout}>
-                <ThemedText style={styles.calloutTitle} lightColor="#000" darkColor="#000">
-                  {restaurant.name}
-                </ThemedText>
-                <ThemedText style={styles.calloutCuisine} lightColor="#555" darkColor="#555">
-                  {restaurant.cuisine}
-                </ThemedText>
-                <ThemedText style={styles.calloutAddress} lightColor="#777" darkColor="#777">
-                  {restaurant.address}
-                </ThemedText>
+                <Text style={styles.calloutTitle}>{restaurant.name}</Text>
+                <Text style={styles.calloutCuisine}>{restaurant.cuisine}</Text>
+                <Text style={styles.calloutAddress}>{restaurant.address}</Text>
               </View>
             </Callout>
           </Marker>
@@ -110,9 +101,9 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   map: { flex: 1 },
   callout: { minWidth: 150, maxWidth: 250, padding: 8 },
-  calloutTitle: { fontSize: 15, fontWeight: '700', marginBottom: 2 },
-  calloutCuisine: { fontSize: 13, marginBottom: 2, textTransform: 'capitalize' },
-  calloutAddress: { fontSize: 12 },
+  calloutTitle: { fontSize: 15, fontWeight: '700', marginBottom: 2, color: '#000' },
+  calloutCuisine: { fontSize: 13, marginBottom: 2, textTransform: 'capitalize', color: '#555' },
+  calloutAddress: { fontSize: 12, color: '#777' },
   filterFab: {
     position: 'absolute',
     top: 56,

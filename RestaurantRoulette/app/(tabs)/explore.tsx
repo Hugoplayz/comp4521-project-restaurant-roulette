@@ -2,9 +2,6 @@ import { useCallback, useMemo, useState } from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { useLocation } from '@/hooks/use-location';
-import { useRestaurants } from '@/hooks/use-restaurants';
-import { useFilters } from '@/hooks/use-filters';
 import { useFilterContext } from '@/contexts/filter-context';
 import { LoadingScreen } from '@/components/loading-screen';
 import { ErrorScreen } from '@/components/error-screen';
@@ -21,18 +18,18 @@ export default function RouletteScreen() {
   const colorScheme = useColorScheme() ?? 'light';
   const colors = Colors[colorScheme];
 
-  const { latitude, longitude, loading: locationLoading, error: locationError, permissionDenied } = useLocation();
-  const { radius, selectedCuisines, applyFilters, applyToRestaurants, activeFilterCount } = useFilterContext();
+  const {
+    locationLoading, locationError, permissionDenied,
+    restaurants, restaurantsLoading, restaurantsError, refetch,
+    availableCuisines,
+    radius, selectedCuisines, applyFilters, applyToRestaurants, activeFilterCount,
+  } = useFilterContext();
 
   const [filterSheetVisible, setFilterSheetVisible] = useState(false);
   const [spinning, setSpinning] = useState(false);
   const [winner, setWinner] = useState<Restaurant | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
 
-  const { restaurants, loading: restaurantsLoading, error: restaurantsError, refetch } =
-    useRestaurants(latitude, longitude, radius);
-
-  const { availableCuisines } = useFilters(restaurants);
   const filteredRestaurants = useMemo(() => applyToRestaurants(restaurants), [restaurants, applyToRestaurants]);
   const spinList = filteredRestaurants.length >= 2 ? filteredRestaurants : restaurants;
 
