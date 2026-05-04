@@ -37,20 +37,18 @@ export const Colors = {
   },
 };
 
-/** Colors used for roulette wheel segments */
+/** Colors used for roulette wheel segments — enough for up to 50 segments */
 export const WheelColors = [
-  '#FF6B35', // warm orange
-  '#2EC4B6', // teal
-  '#E71D36', // red
-  '#FDCA40', // yellow
-  '#7B2D8E', // purple
-  '#3A86FF', // blue
-  '#06D6A0', // mint
-  '#EF476F', // pink
-  '#118AB2', // ocean blue
-  '#FFD166', // light gold
-  '#073B4C', // dark teal
-  '#F77F00', // amber
+  '#FF6B35', '#2EC4B6', '#E71D36', '#FDCA40', '#7B2D8E',
+  '#3A86FF', '#06D6A0', '#EF476F', '#118AB2', '#FFD166',
+  '#073B4C', '#F77F00', '#9B2335', '#00B4D8', '#80B918',
+  '#E63946', '#457B9D', '#F4A261', '#2A9D8F', '#E9C46A',
+  '#264653', '#A8DADC', '#6D6875', '#B5838D', '#FFBA08',
+  '#3D405B', '#81B29A', '#F2CC8F', '#118C4F', '#FF595E',
+  '#6A4C93', '#1982C4', '#8AC926', '#FFCA3A', '#FF595E',
+  '#6A4C93', '#1982C4', '#8AC926', '#FFCA3A', '#FF595E',
+  '#F72585', '#7209B7', '#3A0CA3', '#4361EE', '#4CC9F0',
+  '#606C38', '#DDA15E', '#BC6C25', '#283618', '#FEFAE0',
 ];
 
 export const Fonts = Platform.select({

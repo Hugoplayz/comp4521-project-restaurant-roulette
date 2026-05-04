@@ -1,10 +1,11 @@
-import { useState, useCallback } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useLocation } from '@/hooks/use-location';
 import { useRestaurants } from '@/hooks/use-restaurants';
-import { useFilters, RADIUS_DEFAULT } from '@/hooks/use-filters';
+import { useFilters } from '@/hooks/use-filters';
+import { useFilterContext } from '@/contexts/filter-context';
 import { LoadingScreen } from '@/components/loading-screen';
 import { ErrorScreen } from '@/components/error-screen';
 import { RouletteWheel } from '@/components/roulette-wheel';
@@ -21,25 +22,19 @@ export default function RouletteScreen() {
   const colors = Colors[colorScheme];
 
   const { latitude, longitude, loading: locationLoading, error: locationError, permissionDenied } = useLocation();
+  const { radius, selectedCuisines, applyFilters, applyToRestaurants, activeFilterCount } = useFilterContext();
 
-  const [radius, setRadius] = useState(RADIUS_DEFAULT);
   const [filterSheetVisible, setFilterSheetVisible] = useState(false);
+  const [spinning, setSpinning] = useState(false);
+  const [winner, setWinner] = useState<Restaurant | null>(null);
+  const [modalVisible, setModalVisible] = useState(false);
 
   const { restaurants, loading: restaurantsLoading, error: restaurantsError, refetch } =
     useRestaurants(latitude, longitude, radius);
 
-  const {
-    selectedCuisines,
-    toggleCuisine,
-    clearCuisines,
-    availableCuisines,
-    filteredRestaurants,
-    activeCuisineCount,
-  } = useFilters(restaurants);
-
-  const [spinning, setSpinning] = useState(false);
-  const [winner, setWinner] = useState<Restaurant | null>(null);
-  const [modalVisible, setModalVisible] = useState(false);
+  const { availableCuisines } = useFilters(restaurants);
+  const filteredRestaurants = useMemo(() => applyToRestaurants(restaurants), [restaurants, applyToRestaurants]);
+  const spinList = filteredRestaurants.length >= 2 ? filteredRestaurants : restaurants;
 
   const handleSpin = useCallback(() => {
     if (spinning) return;
@@ -67,9 +62,9 @@ export default function RouletteScreen() {
   if (restaurantsLoading) return <LoadingScreen message="Searching for nearby restaurants..." />;
   if (restaurantsError) return <ErrorScreen message={`Could not load restaurants.\n${restaurantsError}`} onRetry={refetch} />;
   if (restaurants.length === 0) return <ErrorScreen message="No restaurants found nearby. Try a wider radius." onRetry={refetch} />;
+  if (spinList.length < 2) return <ErrorScreen message="Need at least 2 restaurants to spin. Try adjusting your filters." onRetry={refetch} />;
 
-  const spinList = filteredRestaurants.length >= 2 ? filteredRestaurants : restaurants;
-  const activeFilterCount = activeCuisineCount + (radius !== RADIUS_DEFAULT ? 1 : 0);
+  const showingFiltered = filteredRestaurants.length > 0 && filteredRestaurants.length < restaurants.length;
 
   return (
     <ThemedView style={styles.container}>
@@ -79,7 +74,7 @@ export default function RouletteScreen() {
           <View style={styles.headerLeft}>
             <ThemedText style={styles.title}>Restaurant Roulette</ThemedText>
             <ThemedText style={styles.subtitle}>
-              {filteredRestaurants.length < restaurants.length
+              {showingFiltered
                 ? `${filteredRestaurants.length} of ${restaurants.length} restaurants`
                 : `${restaurants.length} restaurants nearby`}
             </ThemedText>
@@ -100,11 +95,7 @@ export default function RouletteScreen() {
 
         {/* Wheel */}
         <View style={styles.wheelContainer}>
-          <RouletteWheel
-            restaurants={spinList}
-            spinning={spinning}
-            onFinished={handleFinished}
-          />
+          <RouletteWheel restaurants={spinList} spinning={spinning} onFinished={handleFinished} />
         </View>
 
         {/* Spin button */}
@@ -130,11 +121,9 @@ export default function RouletteScreen() {
           visible={filterSheetVisible}
           onClose={() => setFilterSheetVisible(false)}
           radius={radius}
-          onRadiusChange={setRadius}
-          availableCuisines={availableCuisines}
           selectedCuisines={selectedCuisines}
-          onToggleCuisine={toggleCuisine}
-          onClearCuisines={clearCuisines}
+          availableCuisines={availableCuisines}
+          onApply={({ radius: r, selectedCuisines: c }) => applyFilters(r, c)}
         />
       </SafeAreaView>
     </ThemedView>

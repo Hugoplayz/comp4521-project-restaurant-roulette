@@ -14,7 +14,7 @@ import { WheelColors } from '@/constants/theme';
 const WHEEL_SIZE = 300;
 const WHEEL_RADIUS = WHEEL_SIZE / 2;
 const CENTER = WHEEL_RADIUS;
-const MAX_SEGMENTS = 12;
+const MAX_SEGMENTS = 50; // allow up to 50 restaurants on the wheel
 
 interface RouletteWheelProps {
   restaurants: Restaurant[];
@@ -154,14 +154,14 @@ export function RouletteWheel({ restaurants, spinning, onFinished }: RouletteWhe
                     x={labelPos.x}
                     y={labelPos.y}
                     fill="#fff"
-                    fontSize={segmentCount > 8 ? 8 : 10}
+                    fontSize={segmentCount > 20 ? 6 : segmentCount > 8 ? 8 : 10}
                     fontWeight="bold"
                     textAnchor="middle"
                     alignmentBaseline="middle"
                     rotation={labelAngle}
                     origin={`${labelPos.x}, ${labelPos.y}`}
                   >
-                    {truncateLabel(restaurant.name, segmentCount > 8 ? 9 : 12)}
+                    {truncateLabel(restaurant.name, segmentCount > 20 ? 7 : segmentCount > 8 ? 9 : 12)}
                   </SvgText>
                 </G>
               );

@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import MapView, { Callout, Circle, Marker } from 'react-native-maps';
 
 import { useLocation } from '@/hooks/use-location';
 import { useRestaurants } from '@/hooks/use-restaurants';
-import { useFilters, RADIUS_DEFAULT } from '@/hooks/use-filters';
+import { useFilters } from '@/hooks/use-filters';
+import { useFilterContext } from '@/contexts/filter-context';
 import { LoadingScreen } from '@/components/loading-screen';
 import { ErrorScreen } from '@/components/error-screen';
 import { FilterSheet } from '@/components/filter-sheet';
@@ -20,30 +21,21 @@ export default function MapScreen() {
   const colors = Colors[colorScheme];
 
   const { latitude, longitude, loading: locationLoading, error: locationError, permissionDenied } = useLocation();
+  const { radius, selectedCuisines, applyFilters, applyToRestaurants, activeFilterCount } = useFilterContext();
 
-  const [radius, setRadius] = useState(RADIUS_DEFAULT);
   const [filterSheetVisible, setFilterSheetVisible] = useState(false);
 
   const { restaurants, loading: restaurantsLoading, error: restaurantsError, refetch } =
     useRestaurants(latitude, longitude, radius);
 
-  const {
-    selectedCuisines,
-    toggleCuisine,
-    clearCuisines,
-    availableCuisines,
-    filteredRestaurants,
-    activeCuisineCount,
-  } = useFilters(restaurants);
+  const { availableCuisines } = useFilters(restaurants);
+  const displayList = useMemo(() => applyToRestaurants(restaurants), [restaurants, applyToRestaurants]);
 
   if (locationLoading) return <LoadingScreen message="Finding your location..." />;
   if (permissionDenied || locationError) return <ErrorScreen message={locationError || 'Location permission is required to find nearby restaurants.'} />;
   if (restaurantsLoading) return <LoadingScreen message="Searching for nearby restaurants..." />;
   if (restaurantsError) return <ErrorScreen message={`Could not load restaurants.\n${restaurantsError}`} onRetry={refetch} />;
   if (restaurants.length === 0) return <ErrorScreen message="No restaurants found nearby. Try a wider radius." onRetry={refetch} />;
-
-  const displayList = filteredRestaurants.length > 0 ? filteredRestaurants : restaurants;
-  const activeFilterCount = activeCuisineCount + (radius !== RADIUS_DEFAULT ? 1 : 0);
 
   return (
     <View style={styles.container}>
@@ -58,7 +50,6 @@ export default function MapScreen() {
         showsUserLocation
         showsMyLocationButton
       >
-        {/* Radius circle overlay */}
         <Circle
           center={{ latitude: latitude!, longitude: longitude! }}
           radius={radius}
@@ -66,7 +57,6 @@ export default function MapScreen() {
           fillColor={`${colors.primary}18`}
           strokeWidth={1.5}
         />
-
         {displayList.map((restaurant: Restaurant) => (
           <Marker
             key={restaurant.id}
@@ -91,7 +81,6 @@ export default function MapScreen() {
         ))}
       </MapView>
 
-      {/* Filter FAB */}
       <TouchableOpacity
         style={[styles.filterFab, { backgroundColor: colors.background, borderColor: colors.border }]}
         onPress={() => setFilterSheetVisible(true)}
@@ -109,11 +98,9 @@ export default function MapScreen() {
         visible={filterSheetVisible}
         onClose={() => setFilterSheetVisible(false)}
         radius={radius}
-        onRadiusChange={setRadius}
-        availableCuisines={availableCuisines}
         selectedCuisines={selectedCuisines}
-        onToggleCuisine={toggleCuisine}
-        onClearCuisines={clearCuisines}
+        availableCuisines={availableCuisines}
+        onApply={({ radius: r, selectedCuisines: c }) => applyFilters(r, c)}
       />
     </View>
   );

@@ -1,7 +1,7 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as FileSystem from 'expo-file-system';
 import { Restaurant } from '@/types/restaurant';
 
-const HISTORY_KEY = '@restaurant_roulette_history';
+const HISTORY_FILE = FileSystem.documentDirectory + 'spin_history.json';
 const MAX_HISTORY = 50;
 
 export interface SpinResult {
@@ -19,7 +19,9 @@ export async function saveSpinResult(restaurant: Restaurant): Promise<void> {
       timestamp: Date.now(),
     };
     const updated = [entry, ...existing].slice(0, MAX_HISTORY);
-    await AsyncStorage.setItem(HISTORY_KEY, JSON.stringify(updated));
+    await FileSystem.writeAsStringAsync(HISTORY_FILE, JSON.stringify(updated), {
+      encoding: FileSystem.EncodingType.UTF8,
+    });
   } catch (err) {
     console.warn('Failed to save spin result:', err);
   }
@@ -27,8 +29,11 @@ export async function saveSpinResult(restaurant: Restaurant): Promise<void> {
 
 export async function getSpinHistory(): Promise<SpinResult[]> {
   try {
-    const raw = await AsyncStorage.getItem(HISTORY_KEY);
-    if (!raw) return [];
+    const info = await FileSystem.getInfoAsync(HISTORY_FILE);
+    if (!info.exists) return [];
+    const raw = await FileSystem.readAsStringAsync(HISTORY_FILE, {
+      encoding: FileSystem.EncodingType.UTF8,
+    });
     return JSON.parse(raw) as SpinResult[];
   } catch (err) {
     console.warn('Failed to load spin history:', err);
@@ -38,7 +43,10 @@ export async function getSpinHistory(): Promise<SpinResult[]> {
 
 export async function clearSpinHistory(): Promise<void> {
   try {
-    await AsyncStorage.removeItem(HISTORY_KEY);
+    const info = await FileSystem.getInfoAsync(HISTORY_FILE);
+    if (info.exists) {
+      await FileSystem.deleteAsync(HISTORY_FILE);
+    }
   } catch (err) {
     console.warn('Failed to clear spin history:', err);
   }
@@ -57,6 +65,5 @@ export function formatTimestamp(timestamp: number): string {
   if (diffHours < 24) return `${diffHours}h ago`;
   if (diffDays === 1) return 'Yesterday';
   if (diffDays < 7) return `${diffDays} days ago`;
-
   return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }

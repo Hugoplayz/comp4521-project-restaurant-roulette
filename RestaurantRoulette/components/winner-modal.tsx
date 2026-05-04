@@ -41,6 +41,11 @@ export function WinnerModal({ restaurant, visible, onSpinAgain, onClose }: Winne
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={styles.overlay}>
         <View style={[styles.card, { backgroundColor: colors.background }]}>
+          {/* Close button */}
+          <TouchableOpacity style={styles.closeButton} onPress={onClose} hitSlop={8}>
+            <ThemedText style={styles.closeIcon}>✕</ThemedText>
+          </TouchableOpacity>
+
           <ThemedText style={styles.headerLabel}>You're going to...</ThemedText>
           <ThemedText style={styles.restaurantName}>{restaurant.name}</ThemedText>
 
@@ -171,5 +176,18 @@ const styles = StyleSheet.create({
   halfButtonText: {
     fontSize: 15,
     fontWeight: '600',
+  },
+  closeButton: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    width: 30,
+    height: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  closeIcon: {
+    fontSize: 18,
+    opacity: 0.5,
   },
 });
