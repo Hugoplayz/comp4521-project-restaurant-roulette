@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import MapView, { Callout, Circle, Marker } from 'react-native-maps';
+import MapView, { Circle, Marker } from 'react-native-maps';
 
 import { useFilterContext } from '@/contexts/filter-context';
 import { LoadingScreen } from '@/components/loading-screen';
@@ -9,6 +9,7 @@ import { FilterSheet } from '@/components/filter-sheet';
 import { ThemedText } from '@/components/themed-text';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { openInMaps } from '@/utils/maps';
 import { Restaurant } from '@/types/restaurant';
 
 const DELTA = 0.01;
@@ -26,6 +27,7 @@ export default function MapScreen() {
   } = useFilterContext();
 
   const [filterSheetVisible, setFilterSheetVisible] = useState(false);
+  const [selectedRestaurant, setSelectedRestaurant] = useState<Restaurant | null>(null);
 
   const displayList = useMemo(() => applyToRestaurants(restaurants), [restaurants, applyToRestaurants]);
 
@@ -47,6 +49,7 @@ export default function MapScreen() {
         }}
         showsUserLocation
         showsMyLocationButton
+        onPress={() => setSelectedRestaurant(null)}
       >
         <Circle
           center={{ latitude: latitude!, longitude: longitude! }}
@@ -60,20 +63,42 @@ export default function MapScreen() {
             key={restaurant.id}
             coordinate={{ latitude: restaurant.lat, longitude: restaurant.lon }}
             pinColor="red"
-          >
-            <Callout tooltip={true}>
-              <View style={styles.callout}>
-                <Text style={styles.calloutTitle}>{restaurant.name}</Text>
-                {!!restaurant.cuisine && (
-                  <Text style={styles.calloutCuisine}>{restaurant.cuisine}</Text>
-                )}
-                <Text style={styles.calloutAddress}>{restaurant.address}</Text>
-              </View>
-            </Callout>
-          </Marker>
+            onPress={(e) => {
+              e.stopPropagation();
+              setSelectedRestaurant(restaurant);
+            }}
+          />
         ))}
       </MapView>
 
+      {/* Info card shown when a pin is tapped */}
+      {selectedRestaurant && (
+        <View style={[styles.infoCard, { backgroundColor: colors.background, borderColor: colors.border }]}>
+          <TouchableOpacity style={styles.infoCardDismiss} onPress={() => setSelectedRestaurant(null)} hitSlop={8}>
+            <Text style={[styles.infoCardDismissText, { color: colors.icon }]}>✕</Text>
+          </TouchableOpacity>
+          <Text style={[styles.infoName, { color: colors.text }]} numberOfLines={2}>
+            {selectedRestaurant.name}
+          </Text>
+          {!!selectedRestaurant.cuisine && (
+            <Text style={styles.infoCuisine} numberOfLines={1}>
+              {selectedRestaurant.cuisine}
+            </Text>
+          )}
+          <Text style={styles.infoAddress} numberOfLines={2}>
+            {selectedRestaurant.address}
+          </Text>
+          <TouchableOpacity
+            style={[styles.directionsButton, { backgroundColor: colors.primary }]}
+            onPress={() => openInMaps(selectedRestaurant.lat, selectedRestaurant.lon, selectedRestaurant.name)}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.directionsButtonText}>Directions</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Filter FAB */}
       <TouchableOpacity
         style={[styles.filterFab, { backgroundColor: colors.background, borderColor: colors.border }]}
         onPress={() => setFilterSheetVisible(true)}
@@ -102,21 +127,58 @@ export default function MapScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   map: { flex: 1 },
-  callout: {
-    minWidth: 160,
-    maxWidth: 260,
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    padding: 12,
-    elevation: 6,
+
+  infoCard: {
+    position: 'absolute',
+    bottom: 32,
+    left: 16,
+    right: 16,
+    borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+    padding: 16,
+    elevation: 8,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
   },
-  calloutTitle: { fontSize: 15, fontWeight: '700', marginBottom: 3, color: '#111' },
-  calloutCuisine: { fontSize: 13, marginBottom: 2, textTransform: 'capitalize', color: '#555' },
-  calloutAddress: { fontSize: 12, color: '#777' },
+  infoCardDismiss: {
+    position: 'absolute',
+    top: 10,
+    right: 12,
+  },
+  infoCardDismissText: {
+    fontSize: 16,
+    opacity: 0.5,
+  },
+  infoName: {
+    fontSize: 17,
+    fontWeight: '700',
+    marginBottom: 4,
+    marginRight: 20,
+  },
+  infoCuisine: {
+    fontSize: 13,
+    textTransform: 'capitalize',
+    color: '#888',
+    marginBottom: 2,
+  },
+  infoAddress: {
+    fontSize: 13,
+    color: '#888',
+    marginBottom: 14,
+  },
+  directionsButton: {
+    paddingVertical: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  directionsButtonText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 15,
+  },
+
   filterFab: {
     position: 'absolute',
     top: 56,
