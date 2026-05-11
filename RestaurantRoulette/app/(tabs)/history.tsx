@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import {
   Alert,
   FlatList,
@@ -7,6 +7,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from 'expo-router';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -34,9 +35,11 @@ export default function HistoryScreen() {
     setLoading(false);
   }, []);
 
-  useEffect(() => {
-    loadHistory();
-  }, [loadHistory]);
+  useFocusEffect(
+    useCallback(() => {
+      loadHistory();
+    }, [loadHistory])
+  );
 
   const handleClear = useCallback(() => {
     Alert.alert(

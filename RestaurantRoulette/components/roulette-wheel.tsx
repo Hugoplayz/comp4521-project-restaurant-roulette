@@ -95,9 +95,8 @@ export function RouletteWheel({ restaurants, spinning, onFinished }: RouletteWhe
       // Segment i spans from (i * segmentAngle) to ((i+1) * segmentAngle).
       // We want the midpoint of the winner segment to be at the top.
       const winnerMidAngle = winnerIndex * segmentAngle + segmentAngle / 2;
-      // Rotate so that this midpoint is at 360 - winnerMidAngle (top)
-      const targetAngle = 360 - winnerMidAngle;
-      // Add several full rotations for visual effect
+      const currentOffset = rotation.value % 360;
+      const targetAngle = ((360 - winnerMidAngle) - currentOffset + 360) % 360 || 360;
       const fullSpins = 5 + Math.floor(Math.random() * 3); // 5-7 full spins
       const totalAngle = rotation.value + fullSpins * 360 + targetAngle;
 
