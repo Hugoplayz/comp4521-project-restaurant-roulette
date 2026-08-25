@@ -1,0 +1,25 @@
+{
+  "expo": {
+    "name": "DebugLocation",
+    "slug": "debug-location",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "android": {
+      "package": "com.debug.location",
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
+      ]
+    },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "This app needs your location to display current GPS coordinates."
+        }
+      ]
+    ]
+  }
+}
